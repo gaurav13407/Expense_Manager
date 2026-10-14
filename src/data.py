@@ -61,7 +61,7 @@ def load_category_spending(workbook_path: str | Path = DEFAULT_WORKBOOK) -> pd.D
             rows.append(
                 {
                     "category_code": code_num,
-                    "category": re.sub(r"(?<=\w)\d+(?=,)", "", str(category).strip()).rstrip("1234567890").strip(),
+                    "category": re.sub(r"(?<=\))\d+(?=,)", "", re.sub(r"(?<=\w)\d+(?=,)", "", str(category).strip())).rstrip("1234567890").strip(),
                     "period": period_label,
                     "source_period": str(original_label),
                     "period_index": period_index,
