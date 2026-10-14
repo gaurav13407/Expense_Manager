@@ -115,3 +115,4 @@ python scripts/compare_category_features.py
 
 This writes `outputs/category_feature_experiment.csv`. In the current dataset, description-only accuracy is about 10.7%; amount, transaction type, and month raise it to about 19–20%. That remains weak. Using transaction type alone reaches about 20% accuracy but only 0.091 macro F1, because type is strongly entangled with category labels (for example, the dataset marks every `Salary` row as an expense). The app's category models use structured fields and let you try amount, type, and month. Do not use accuracy alone to claim the model is good.
 # Expense_Manager
+# Expense_Manager
