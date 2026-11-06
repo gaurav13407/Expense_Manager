@@ -1,84 +1,45 @@
-# UK Household Spending Trends and Forecasts
+# Online Retail II: preprocessing and four-model training
 
-A four-model machine-learning project using the UK Living Costs and Food Survey workbook. It prepares category-level spending history, compares four regression algorithms, and provides a small Streamlit dashboard for exploring historical averages and forecasts.
+This project prepares the supplied `Data/online_retail_II.xlsx` workbook and compares four regression models on transaction item quantity.
 
-## Project question
+For a plain-language explanation of the cleaning steps and dataset counts, see [`doc/Preprocessing.md`](doc/Preprocessing.md).
+Each model also has its own explanation under [`doc/training/`](doc/training/).
+The latest comparison is summarized in [`doc/training/results.md`](doc/training/results.md).
 
-How has average weekly household spending changed across major categories, and how do four regression algorithms forecast the next few periods from that history?
+## Dataset and target
 
-## Data
+The workbook contains two sheets, covering December 2009 through December 2011. Each row is an invoice line with an invoice number, product, quantity, timestamp, unit price, customer ID, and country. The training target is `Quantity`. Models use product code, country, unit price, and calendar fields derived from `InvoiceDate`. Invoice and customer IDs are not model inputs.
 
-The source workbook is stored at `data/raw/workbook1detailedexpenditureandtrends.xlsx`. The project reads:
+Preprocessing removes rows without required fields, duplicate rows, cancellations and returns (non-positive quantities), and zero or negative prices. It adds line revenue for analysis. This is transaction-level data, so predictions estimate item quantity on a line; they do not represent household spending or an individual customer's future purchases.
 
-- Worksheet `4.1`: average weekly household spending by category across the historical periods. The values are reported at 2024–25 prices.
-- Worksheet `A6`: latest-year spending comparisons by gross-income decile, shown in the dashboard for context only.
+## Run
 
-The prepared file `data/processed/category_spending.csv` has one row per category and source period. The source is a survey of household groups, not transaction-level or individual-household records. Forecasts are demonstrations for a coursework project, not financial advice or precise official forecasts.
-
-## Four algorithms and team split
-
-Each person can own the algorithm implementation in `src/models/`:
-
-1. **Linear Regression** — simple baseline using period, category and recent spending.
-2. **Random Forest Regressor** — tree ensemble that can model nonlinear patterns.
-3. **Gradient Boosting Regressor** — sequential trees with robust Huber loss.
-4. **Support Vector Regressor (SVR)** — nonlinear regression with an RBF kernel.
-
-All models share the same features and chronological evaluation so their scores can be compared fairly. Features include category, period order, previous-period spending, second-previous spending, and the mean of the previous three observations.
-
-## Run the project
-
-From the project folder, install dependencies if needed:
+Install dependencies and run the pipeline from the project root:
 
 ```bash
 python -m pip install -r requirements.txt
+python scripts/preprocessing/prepare_dataset.py
+python scripts/training/train_ridge.py
+python scripts/training/train_random_forest.py
+python scripts/training/train_extra_trees.py
+python scripts/training/train_hist_gradient_boosting.py
 ```
 
-Prepare the cleaned data and train/evaluate all four models:
+Run preprocessing once before training. Each model file contains its own complete training pipeline, so a teammate can work on that model directly without relying on a shared training helper. The four training commands can be run independently, in any order. Each command uses the same final-two-month chronological holdout and seeded sample limits (up to 60,000 training rows and 20,000 evaluation rows), then saves its fitted pipeline and holdout predictions. Each run updates its model's row in `outputs/model_comparison.csv`.
 
-```bash
-python scripts/prepare_dataset.py
-python scripts/train_models.py
-```
+## Models
 
-The training script evaluates the last four periods using a rolling one-step-ahead split, then refits each model on all available history and saves the fitted models. It writes:
+1. **Ridge Regression** — fast, regularized linear baseline. See [`doc/training/ridge_regression.md`](doc/training/ridge_regression.md).
+2. **Random Forest Regressor** — averages trees to learn nonlinear patterns. See [`doc/training/random_forest.md`](doc/training/random_forest.md).
+3. **Extra Trees Regressor** — uses extra-randomized tree splits for comparison. See [`doc/training/extra_trees.md`](doc/training/extra_trees.md).
+4. **Histogram Gradient Boosting Regressor** — adds trees sequentially to reduce earlier errors. See [`doc/training/histogram_gradient_boosting.md`](doc/training/histogram_gradient_boosting.md).
 
-- `models/`: four saved model pipelines.
-- `outputs/model_comparison.csv`: MAE, RMSE and R² for each model.
-- `outputs/holdout_predictions.csv`: actual and predicted holdout values.
-- `outputs/three_period_forecasts.csv`: next three period estimates from each model.
+All models use the same chronological split and inputs. Categorical fields are encoded with an unknown-category fallback; numeric fields are imputed and scaled. The quantity target is capped at 1,000 and log-transformed during fitting to reduce the influence of extreme quantities. Evaluation reports MAE, RMSE, and R² after predictions are converted back to quantity units.
 
-Launch the dashboard:
+## Output files
 
-```bash
-streamlit run app.py
-```
+- `outputs/model_comparison.csv`: holdout metrics and split details for each model.
+- `outputs/ridge_regression_predictions.csv`, `outputs/random_forest_predictions.csv`, `outputs/extra_trees_predictions.csv`, and `outputs/histogram_gradient_boosting_predictions.csv`: actual and predicted quantity for each model's holdout rows.
+- `models/*.joblib`: fitted scikit-learn pipelines, ready for inference with the same features.
 
-The dashboard lets users select a spending category and model, inspect its historical and forecast values, compare evaluation errors, and view current-year income-decile comparisons.
-
-## Evaluation and limitations
-
-- The holdout split is chronological; later periods are not shuffled into training data.
-- MAE and RMSE are in pounds of average weekly household spending. Lower values mean smaller errors. R² is supplementary and can be negative.
-- The holdout is small: only four periods per category, so model rankings can change with a different split.
-- Category-level survey averages smooth over variation between households. The model cannot categorize an individual expense or identify an individual household's unusual purchase.
-- Historical data includes changes in survey periods and unusual pandemic-era spending. Use the dashboard for learning and comparison, and explain those caveats in any presentation.
-
-## Folder structure
-
-```text
-Expense_Trakcer/
-├── app.py
-├── data/
-│   ├── raw/                  # Supplied survey workbook
-│   └── processed/            # Tidy category-by-period CSV
-├── models/                   # Trained model pipelines
-├── outputs/                  # Holdout evaluation and forecast CSVs
-├── scripts/
-│   ├── prepare_dataset.py
-│   └── train_models.py
-└── src/
-    ├── data.py               # Workbook loading and reshaping
-    ├── forecasting.py        # Shared features, training, evaluation, forecasts
-    └── models/               # One algorithm module per team member
-```
+The scores should be interpreted as a comparison on this dataset and split, not as guarantees for future transactions. The last two months are a relatively small time window, and unseen products or seasonal patterns may perform differently.

@@ -1,0 +1,6 @@
+step,rows_before,rows_removed,rows_after,reason
+missing_required_fields,1067371,0,1067371,"Removed rows missing invoice date, product code, country, quantity, or price."
+blank_product_code,1067371,0,1067371,Removed rows with an empty product code.
+non_positive_quantity,1067371,22950,1044421,"Excluded zero/negative quantity rows, including returns and cancellations."
+non_positive_price,1044421,2750,1041671,Removed rows with zero or negative unit price.
+exact_duplicates,1041671,33757,1007914,Removed exact duplicate rows across all source fields.

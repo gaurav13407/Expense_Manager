@@ -6,3 +6,6 @@ venv/
 .streamlit/secrets.toml
 outputs/*
 !outputs/.gitkeep
+# Generated training artifacts are reproducible and can exceed GitHub file limits.
+models/*.joblib
+Data/processed/online_retail_clean.csv
